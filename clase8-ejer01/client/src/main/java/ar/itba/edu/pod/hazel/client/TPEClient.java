@@ -85,8 +85,9 @@ public class TPEClient {
         // Orquestacion de Jobs y lanzamiento
         System.out.println("Sending job");
 
-        String queryNumber = System.getProperty("query","2");
+        String queryNumber = System.getProperty("query");
 
+        System.out.println("query number:" + queryNumber);
         switch (queryNumber){
             case "1":
                 final ICompletableFuture<Map<String, Integer>> future1 = job
