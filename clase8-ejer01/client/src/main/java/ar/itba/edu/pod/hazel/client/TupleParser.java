@@ -9,6 +9,6 @@ public class TupleParser {
 
     public static Tuple parse(String s) {
         String[] data = s.split(",");
-        return new Tuple(Integer.valueOf(data[3]), data[4], data[0], data[6], data[7], data[8]);
+        return new Tuple(Integer.valueOf(data[3]), data[4], data[0], data[6].trim(), data[7].trim(), data[8]);
     }
 }
