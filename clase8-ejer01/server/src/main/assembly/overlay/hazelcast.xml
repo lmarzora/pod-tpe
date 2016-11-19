@@ -24,7 +24,7 @@
            xmlns="http://www.hazelcast.com/schema/config"
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <group>
-        <name>clusterRaptor</name>
+        <name>52066-54449-clusterRaptor</name>
         <password>raptor</password>
     </group>
     <properties>
@@ -47,6 +47,7 @@
                 <multicast-port>54327</multicast-port>
 		<trusted-interfaces>
 			<interface>10.16.32.*</interface>
+			<interface>127.0.0.*</interface>
 		</trusted-interfaces>
             </multicast>
             <tcp-ip enabled="false">
@@ -72,6 +73,7 @@
         </join>
         <interfaces enabled="true">
             <interface>10.16.33.*</interface>
+			<interface>127.0.0.*</interface>
         </interfaces>
         <ssl enabled="false"/>
         <socket-interceptor enabled="false"/>

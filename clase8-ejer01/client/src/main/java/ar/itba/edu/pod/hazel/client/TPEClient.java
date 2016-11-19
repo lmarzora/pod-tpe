@@ -1,16 +1,5 @@
 package ar.itba.edu.pod.hazel.client;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.LineNumberReader;
-import java.net.URISyntaxException;
-import java.text.DecimalFormat;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.ExecutionException;
-
 import ar.itba.edu.pod.hazel.*;
 import com.hazelcast.client.HazelcastClient;
 import com.hazelcast.client.config.ClientConfig;
@@ -22,12 +11,19 @@ import com.hazelcast.mapreduce.Job;
 import com.hazelcast.mapreduce.JobTracker;
 import com.hazelcast.mapreduce.KeyValueSource;
 
+import java.io.*;
+import java.net.URISyntaxException;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
+
 public class TPEClient {
-    private static final String MAP_NAME = "censo";
+    private static final String MAP_NAME = "52066-54449-";
+    private static final String MAP_NAME_2 = MAP_NAME + "aux";
+    private static PrintWriter printer;
 
     // el directorio wc dentro en un directorio llamado "resources"
     // al mismo nivel que la carpeta src, etc.
-    private static final String FILE = "files/dataset-1000.csv";
 
     public static void main(final String[] args)
             throws InterruptedException, ExecutionException, IOException, URISyntaxException {
@@ -56,20 +52,28 @@ public class TPEClient {
 
         // Preparar la particion de datos y distribuirla en el cluster a traves
         // del IMap
-        final IMap<Integer, Tuple> map = client.getMap(MAP_NAME);
+        System.out.println(String.format("input = %s", System.getProperty("inPath")));
+        System.out.println(String.format("output = %s", System.getProperty("outPath")));
+        String inputPath = System.getProperty("inPath");
+        printer = new PrintWriter(System.getProperty("outPath"));
+        String mapName = MAP_NAME + inputPath;
+        final IMap<Integer, Tuple> map = client.getMap(mapName);
 
 
-        System.out.println("Loading Map");
-        final InputStream is = TPEClient.class.getClassLoader().getResourceAsStream(FILE);
+        if(map.isEmpty()) {
+            System.out.println("Loading Map");
+            final InputStream is = new FileInputStream(inputPath);//TPEClient.class.getClassLoader().getResourceAsStream(inputPath);
 
-        final LineNumberReader reader = new LineNumberReader(new InputStreamReader(is));
-        reader.readLine();
-        String line = null;
-        while ((line = reader.readLine()) != null) {
-            map.put(reader.getLineNumber(), TupleParser.parse(line));
+            final LineNumberReader reader = new LineNumberReader(new InputStreamReader(is));
+            reader.readLine();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                map.put(reader.getLineNumber(), TupleParser.parse(line));
+            }
+            System.out.println("Map loaded");
+        } else{
+            System.out.println("Map Already loaded");
         }
-
-        System.out.println("Map loaded");
 
         // Ahora el JobTracker y los Workers!
         System.out.println("Getting traker");
@@ -103,13 +107,13 @@ public class TPEClient {
                 break;
 
             case "2":
-                final ICompletableFuture<Map<String,Double>> future2 = job
+                final ICompletableFuture<List<Map.Entry<String, Double>>> future2 = job
                         .mapper(new Query2Mapper())
                         .reducer(new Query2Reducer())
-                        .submit();
+                        .submit(new KeyDescendantCollator<>());
 
                 // Tomar resultado e Imprimirlo
-                final Map<String, Double> ans2 = future2.get();
+                final List<Map.Entry<String, Double>> ans2 = future2.get();
 
                 query2printer(ans2);
                 break;
@@ -144,53 +148,76 @@ public class TPEClient {
                 break;
 
             case "5":
-                final ICompletableFuture<Map<String[], Integer>> future5_1 = job
+                final ICompletableFuture<Map<String, Integer>> future5_1 = job
                         .mapper(new Query5Mapper())
-                        .combiner(new Query5Combiner())
-                        .reducer(new Query5Reducer())
+                        .combiner(new CountCombiner())
+                        .reducer(new CountReducer())
                         .submit();
 
                 // Tomar resultado como base para segundo map reduce
-                final Map<String[],Integer> habitantesPorDepto = future5_1.get();
+                final Map<String,Integer> habitantesPorDepto = future5_1.get();
 
-                query5printer(habitantesPorDepto);      //TODO por ahora imprime cientos de habitantes nada mas
-                break;                                  //faltaria hacer el segundo map reduce
+                final IMap<String, Integer> map2 = client.getMap(MAP_NAME_2);
+                map2.putAll(habitantesPorDepto);
+
+                final KeyValueSource<String, Integer> source2 = KeyValueSource.fromMap(map2);
+
+                final Job<String, Integer> secondJob = tracker.newJob(source2);
+
+                final ICompletableFuture<Map<Integer, List<String>>> future5_2 = secondJob
+                        .mapper(new SwapperMapper())
+                        .reducer(new Query5Reducer())
+                        .submit();
+
+                final Map<Integer,List<String>> ans5 = future5_2.get();
+
+                query5printer(ans5);
+
+                break;
 
             default:
                 throw new RuntimeException("Bad query parameter");
         }
 
+        printer.close();
         System.exit(0);
     }
 
     private static void query1printer(Map<String, Integer> map){
         String[] keys  = {"0-14", "15-64", "65-?"};
         for (String key :keys)
-            System.out.println(key + " = " + map.getOrDefault(key,0));      //mostramos para todos los intervalos
+            printer.println(key + " = " + map.getOrDefault(key,0));      //mostramos para todos los intervalos
     }
-    private static void query2printer(Map<String, Double> map){
-        String[] keys  = {"0","1","2","3","4","5","6","7","8","9"};
-        for (String key :keys) {
-            if(map.containsKey(key))                                // si no esta no lo mostramos
-                System.out.println(key + " = " + String.format("%.02f", map.get(key)));     //dos decimales
+    private static void query2printer(List<Map.Entry<String, Double>> list){
+        for (Map.Entry<String, Double> entry : list) {
+            printer.println(String.format("%s = %.02f", entry.getKey(), entry.getValue()));     //dos decimales
         }
     }
 
+//    private static void query2printer(Map<String, Double> map){
+//        String[] keys  = {"0","1","2","3","4","5","6","7","8","9"};
+//        for (String key :keys) {
+//            if(map.containsKey(key))                                // si no esta no lo mostramos
+//                printer.println(key + " = " + String.format("%.02f", map.get(key)));     //dos decimales
+//        }
+//    }
+
     private static void query3printer(List<Map.Entry<String,Double>> list){
         for (Map.Entry<String,Double> entry :list) {
-            System.out.println(entry.getKey() + " = " + String.format("%.02f", entry.getValue()));     //dos decimales
+            printer.println(entry.getKey() + " = " + String.format("%.02f", entry.getValue()));     //dos decimales
         }
     }
 
     private static void query4printer(List<Map.Entry<String,Integer>> list){
         for (Map.Entry<String,Integer> entry :list) {
-            System.out.println(entry.getKey() + " = " + entry.getValue());
+            printer.println(entry.getKey() + " = " + entry.getValue());
         }
     }
 
-    private static void query5printer(Map<String[],Integer> map){
-        for (Map.Entry<String[],Integer> entry : map.entrySet()) {
-            System.out.println(String.format("%s(%s) = ", entry.getKey()[0], entry.getKey()[1]) + entry.getValue());
+    private static void query5printer(Map<Integer, List<String>> map){
+        for (Map.Entry<Integer, List<String>> entry : map.entrySet()) {
+            printer.println(entry.getKey());
+            entry.getValue().forEach(printer::println);
         }
     }
 
