@@ -10,6 +10,8 @@ import com.hazelcast.core.IMap;
 import com.hazelcast.mapreduce.Job;
 import com.hazelcast.mapreduce.JobTracker;
 import com.hazelcast.mapreduce.KeyValueSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.URISyntaxException;
@@ -20,6 +22,7 @@ import java.util.concurrent.ExecutionException;
 public class TPEClient {
     private static final String MAP_NAME = "52066-54449-";
     private static final String MAP_NAME_2 = MAP_NAME + "aux";
+    private static Logger logger = LoggerFactory.getLogger(TPEClient.class);
     private static PrintWriter printer;
 
     // el directorio wc dentro en un directorio llamado "resources"
@@ -59,9 +62,11 @@ public class TPEClient {
         String mapName = MAP_NAME + inputPath;
         final IMap<Integer, Tuple> map = client.getMap(mapName);
 
-
+        long time;
         if(map.isEmpty()) {
             System.out.println("Loading Map");
+            logger.info("Inicio de la lectura del archivo");
+            time = System.currentTimeMillis();
             final InputStream is = new FileInputStream(inputPath);//TPEClient.class.getClassLoader().getResourceAsStream(inputPath);
 
             final LineNumberReader reader = new LineNumberReader(new InputStreamReader(is));
@@ -70,6 +75,9 @@ public class TPEClient {
             while ((line = reader.readLine()) != null) {
                 map.put(reader.getLineNumber(), TupleParser.parse(line));
             }
+            time = System.currentTimeMillis() - time;
+            logger.info("Fin lectura del archivo");
+            logger.info("Tiempo total de carga del mapa en ms = " + time);
             System.out.println("Map loaded");
         } else{
             System.out.println("Map Already loaded");
@@ -94,6 +102,8 @@ public class TPEClient {
         System.out.println("query number:" + queryNumber);
         switch (queryNumber){
             case "1":
+                logger.info("Inicio del trabajo map/reduce");
+                time = System.currentTimeMillis();
                 final ICompletableFuture<Map<String, Integer>> future1 = job
                         .mapper(new Query1Mapper())
                         .combiner(new CountCombiner())
@@ -102,11 +112,15 @@ public class TPEClient {
 
                 // Tomar resultado e Imprimirlo
                 final Map<String, Integer> ans1 = future1.get();
-
+                time = System.currentTimeMillis() - time;
+                logger.info("Fin del trabajo map/reduce");
+                logger.info("Tiempo total de carga de la  query " + queryNumber + " = " + time);
                 query1printer(ans1);
                 break;
 
             case "2":
+                logger.info("Inicio del trabajo map/reduce");
+                time = System.currentTimeMillis();
                 final ICompletableFuture<List<Map.Entry<String, Double>>> future2 = job
                         .mapper(new Query2Mapper())
                         .reducer(new Query2Reducer())
@@ -114,12 +128,16 @@ public class TPEClient {
 
                 // Tomar resultado e Imprimirlo
                 final List<Map.Entry<String, Double>> ans2 = future2.get();
-
+                time = System.currentTimeMillis() - time;
+                logger.info("Fin del trabajo map/reduce");
+                logger.info("Tiempo total de carga de la  query " + queryNumber + " = " + time);
                 query2printer(ans2);
                 break;
 
             case "3":
                 int n = Integer.valueOf(System.getProperty("n","5"));
+                logger.info("Inicio del trabajo map/reduce");
+                time = System.currentTimeMillis();
                 final ICompletableFuture<List<Map.Entry<String,Double>>> future3 = job
                         .mapper(new Query3Mapper())
                         .combiner(new AverageCombiner())
@@ -128,13 +146,18 @@ public class TPEClient {
 
                 // Tomar resultado e Imprimirlo
                 final List<Map.Entry<String,Double>> ans3 = future3.get();
-
+                time = System.currentTimeMillis() - time;
+                logger.info("Fin del trabajo map/reduce");
+                logger.info("Tiempo total de carga de la  query " + queryNumber + " = " + time);
                 query3printer(ans3);
                 break;
 
             case "4":
+
                 String prov = System.getProperty("prov","Buenos Aires");
                 int tope = Integer.valueOf(System.getProperty("tope","500"));
+                logger.info("Inicio del trabajo map/reduce");
+                time = System.currentTimeMillis();
                 final ICompletableFuture<List<Map.Entry<String,Integer>>> future4 = job
                         .mapper(new Query4Mapper(prov))
                         .combiner(new CountCombiner())
@@ -143,11 +166,15 @@ public class TPEClient {
 
                 // Tomar resultado e Imprimirlo
                 final List<Map.Entry<String,Integer>> ans4 = future4.get();
-
+                time = System.currentTimeMillis() - time;
+                logger.info("Fin del trabajo map/reduce");
+                logger.info("Tiempo total de carga de la  query " + queryNumber + " = " + time);
                 query4printer(ans4);
                 break;
 
             case "5":
+                logger.info("Inicio del trabajo map/reduce");
+                time = System.currentTimeMillis();
                 final ICompletableFuture<Map<String, Integer>> future5_1 = job
                         .mapper(new Query5Mapper())
                         .combiner(new CountCombiner())
@@ -170,7 +197,9 @@ public class TPEClient {
                         .submit();
 
                 final Map<Integer,List<String>> ans5 = future5_2.get();
-
+                time = System.currentTimeMillis() - time;
+                logger.info("Fin del trabajo map/reduce");
+                logger.info("Tiempo total de carga de la  query " + queryNumber + " = " + time);
                 query5printer(ans5);
 
                 break;
