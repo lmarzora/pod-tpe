@@ -50,7 +50,7 @@
 		</trusted-interfaces>
             </multicast>
             <tcp-ip enabled="true">
-                <interface>10.16.33.*</interface>
+                <interface>10.16.33.255</interface>
                 <member-list>
                    	<member>10.16.33.197</member>
 			<member>10.16.33.204</member>
@@ -76,7 +76,7 @@
             </discovery-strategies>
         </join>
         <interfaces enabled="true">
-            <interface>10.16.33.*</interface>
+            <interface>10.16.33.255</interface>
         </interfaces>
         <ssl enabled="false"/>
         <socket-interceptor enabled="false"/>
