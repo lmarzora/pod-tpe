@@ -76,7 +76,7 @@
             </discovery-strategies>
         </join>
         <interfaces enabled="true">
-            <interface>10.16.33.255</interface>
+            <interface>10.16.33.*</interface>
         </interfaces>
         <ssl enabled="false"/>
         <socket-interceptor enabled="false"/>
