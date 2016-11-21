@@ -52,7 +52,12 @@
             <tcp-ip enabled="true">
                 <interface>10.16.33.*</interface>
                 <member-list>
-                    <member>10.16.32.*</member>
+                   	<member>10.16.33.197</member>
+			<member>10.16.33.204</member>
+			<member>10.16.33.188</member>	
+			<member>10.16.33.151</member>
+			<member>10.16.33.156</member>
+			<member>10.16.33.214</member>
                 </member-list>
             </tcp-ip>
             <aws enabled="false">
