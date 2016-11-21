@@ -11,6 +11,7 @@ cd client/target
 tar -xzvf clase8-ejer01-client-1.0-SNAPSHOT-bin.tar.gz
 cd clase8-ejer01-client-1.0-SNAPSHOT
 chmod u+x run-client.sh
+chmod u+x load-map.sh
 
 cd $cwd
 
