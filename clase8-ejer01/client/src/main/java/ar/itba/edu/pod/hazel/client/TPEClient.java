@@ -59,19 +59,19 @@ public class TPEClient {
         System.out.println(String.format("output = %s", System.getProperty("outPath")));
         String inputPath = System.getProperty("inPath");
         printer = new PrintWriter(System.getProperty("outPath"));
-        String[] filename = inputPath.split("/");
-        String nameOfMap  = filename[filename.length-1].split(".")[0];
-        String mapName = MAP_NAME + nameOfMap;
+
+        String mapName = MAP_NAME + inputPath;
+        logger.debug("MAPNAME = " + mapName);
         final IMap<Integer, Tuple> map = client.getMap(mapName);
 
         long time;
-        final InputStream is = new FileInputStream(inputPath);//TPEClient.class.getClassLoader().getResourceAsStream(inputPath);
-        final LineNumberReader reader = new LineNumberReader(new InputStreamReader(is));
-        if(map.size() < reader.lines().count()-1) {
+
+        if(map.isEmpty()) {
             System.out.println("Loading Map");
             logger.info("Inicio de la lectura del archivo");
             time = System.currentTimeMillis();
-
+            final InputStream is = new FileInputStream(inputPath);//TPEClient.class.getClassLoader().getResourceAsStream(inputPath);
+            LineNumberReader reader = new LineNumberReader(new InputStreamReader(is));
             reader.readLine();
             String line;
             while ((line = reader.readLine()) != null) {
