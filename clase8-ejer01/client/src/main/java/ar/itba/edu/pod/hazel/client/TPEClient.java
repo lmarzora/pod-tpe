@@ -59,21 +59,24 @@ public class TPEClient {
         System.out.println(String.format("output = %s", System.getProperty("outPath")));
         String inputPath = System.getProperty("inPath");
         printer = new PrintWriter(System.getProperty("outPath"));
-        String mapName = MAP_NAME + inputPath;
+        String[] filename = inputPath.split("/");
+        String nameOfMap  = filename[filename.length-1].split(".")[0];
+        String mapName = MAP_NAME + nameOfMap;
         final IMap<Integer, Tuple> map = client.getMap(mapName);
 
         long time;
-        if(map.isEmpty()) {
+        final InputStream is = new FileInputStream(inputPath);//TPEClient.class.getClassLoader().getResourceAsStream(inputPath);
+        final LineNumberReader reader = new LineNumberReader(new InputStreamReader(is));
+        if(map.size() < reader.lines().count()-1) {
             System.out.println("Loading Map");
             logger.info("Inicio de la lectura del archivo");
             time = System.currentTimeMillis();
-            final InputStream is = new FileInputStream(inputPath);//TPEClient.class.getClassLoader().getResourceAsStream(inputPath);
 
-            final LineNumberReader reader = new LineNumberReader(new InputStreamReader(is));
             reader.readLine();
             String line;
             while ((line = reader.readLine()) != null) {
                 map.put(reader.getLineNumber(), TupleParser.parse(line));
+                logger.debug("Copiada linea " + reader.getLineNumber());
             }
             time = System.currentTimeMillis() - time;
             logger.info("Fin lectura del archivo");
@@ -191,12 +194,12 @@ public class TPEClient {
 
                 final Job<String, Integer> secondJob = tracker.newJob(source2);
 
-                final ICompletableFuture<Map<Integer, List<String>>> future5_2 = secondJob
+                final ICompletableFuture<List<Map.Entry<Integer,List<String>>>> future5_2 = secondJob
                         .mapper(new SwapperMapper())
                         .reducer(new Query5Reducer())
-                        .submit();
+                        .submit(new Query5OrderCollator());
 
-                final Map<Integer,List<String>> ans5 = future5_2.get();
+                final List<Map.Entry<Integer,List<String>>> ans5 = future5_2.get();
                 time = System.currentTimeMillis() - time;
                 logger.info("Fin del trabajo map/reduce");
                 logger.info("Tiempo total de carga de la  query " + queryNumber + " = " + time);
@@ -243,8 +246,8 @@ public class TPEClient {
         }
     }
 
-    private static void query5printer(Map<Integer, List<String>> map){
-        for (Map.Entry<Integer, List<String>> entry : map.entrySet()) {
+    private static void query5printer(List<Map.Entry<Integer,List<String>>> list){
+        for (Map.Entry<Integer, List<String>> entry : list) {
             printer.println(entry.getKey());
             entry.getValue().forEach(printer::println);
         }
